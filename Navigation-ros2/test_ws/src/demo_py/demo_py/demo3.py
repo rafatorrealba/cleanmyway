@@ -1,4 +1,4 @@
-#! /usr/bin/env python
+#!/usr/bin/env python3
 
 import numpy
 import rclpy
@@ -15,23 +15,25 @@ class Turtlebot3ObstacleDetection(Node):
         super().__init__('turtlebot3_obstacle_detection')
 
         """************************************************************
-        ** Iniciar variables
+        ** Initialise variables
         ************************************************************"""
-        self.linear_velocity = 0.5  # unit: m/s
-        self.angular_velocity = 0.7  # unit: m/s
-        self.scan_ranges1 = [360]  # Scan resolution is 1[deg]
-        self.scan_ranges2 = [719]
-        self.scan_ranges3 = [0]
+        self.linear_velocity = 0.7  # unit: m/s
+        self.angular_velocity = 0.0  # unit: m/s
+        self.scan_ranges = numpy.ones(360) * numpy.Infinity
+        self.scan_ranges1 = numpy.ones(0) * numpy.Infinity
+        self.scan_ranges2 = numpy.ones(719) * numpy.Infinity
+        self.scan_ranges
+        self.init_scan_state = False  # To get the initial scan data at the beginning
 
         """************************************************************
         ** Initialise ROS publishers and subscribers
         ************************************************************"""
         qos = QoSProfile(depth=10)
 
-        # Iniciar publishers
+        # Initialise publishers
         self.cmd_vel_pub = self.create_publisher(Twist, 'cmd_vel', qos)
 
-        # Iniciar subscribers
+        # Initialise subscribers
         self.scan_sub = self.create_subscription(
             LaserScan,
             'scan',
@@ -46,10 +48,9 @@ class Turtlebot3ObstacleDetection(Node):
         """************************************************************
         ** Initialise timers
         ************************************************************"""
-
-        self.detect_obstacle_timer = self.create_timer(
+        self.update_timer = self.create_timer(
             0.010,  # unit: s
-            self.detect_obstacle)
+            self.update_callback)
 
         self.get_logger().info("Turtlebot3 obstacle detection node has been initialised.")
 
@@ -58,37 +59,38 @@ class Turtlebot3ObstacleDetection(Node):
     *******************************************************************************"""
     def scan_callback(self, msg):
         self.scan_ranges = msg.ranges
+        self.init_scan_state = True
 
     def cmd_vel_raw_callback(self, msg):
         self.linear_velocity = msg.linear.x
         self.angular_velocity = msg.angular.z
 
+    def update_callback(self):
+        if self.init_scan_state is True:
+            self.detect_obstacle()
+
     def detect_obstacle(self):
         twist = Twist()
-        obstacle_distance = min(self.scan_ranges1)
-        safety_distance = 0.5
-        safety_distance_turn = 0.3
-
+        obstacle_distance = min(self.scan_ranges)
+        
+        safety_distance = 0.5  # unit: m
         if obstacle_distance > safety_distance:
             twist.linear.x = self.linear_velocity
             twist.angular.z = 0.0
-
         else:
             twist.linear.x = 0.0
             twist.angular.z = 0.0
-            self.get_logger().info("Obstacles are detected nearby. Robot stopped.")
-
-
-
+            self.get_logger().info("Se detectaron obstaculos, robot deteniendose")
         self.cmd_vel_pub.publish(twist)
-
 
 
 def main(args=None):
     rclpy.init(args=args)
     turtlebot3_obstacle_detection = Turtlebot3ObstacleDetection()
     rclpy.spin(turtlebot3_obstacle_detection)
-
+    turtlebot3_obstacle_detection.destroy_node()
+    rclpy.shutdown()
 
 if __name__ == '__main__':
     main()
+
