@@ -21,9 +21,9 @@ setup(
     entry_points={
         'console_scripts': [
             'demo = demo_py.demo:main',
-            'demo2 = demo_py.demo2:main',
-            'demo3 = demo_py.demo3:main',
-            'demo4 = demo_py.demo4:main',
+            'demo1 = demo_py.demo2:main',
+            'demo2 = demo_py.demo3:main',
+            'demo3 = demo_py.demo4:main',
 
         ],
     },
